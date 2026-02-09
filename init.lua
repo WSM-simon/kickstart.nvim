@@ -91,7 +91,10 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
+
+-- using this location for python vim.provider
+vim.g.python3_host_prog = vim.fn.expand '~/.venvs/nvim/bin/python'
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -102,7 +105,15 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
+
+vim.api.nvim_create_autocmd('InsertEnter', {
+  callback = function() vim.o.relativenumber = false end,
+})
+
+vim.api.nvim_create_autocmd('InsertLeave', {
+  callback = function() vim.o.relativenumber = true end,
+})
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -256,6 +267,10 @@ rtp:prepend(lazypath)
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
   -- NOTE: Plugins can be added via a link or github org/name. To run setup automatically, use `opts = {}`
+
+  {
+    'github/copilot.vim',
+  },
   { 'NMAC427/guess-indent.nvim', opts = {} },
 
   -- Alternatively, use `config = function() ... end` for full control over the configuration.
@@ -386,7 +401,11 @@ require('lazy').setup({
         --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
         --   },
         -- },
-        -- pickers = {}
+        pickers = {
+          colorscheme = {
+            enable_preview = true,
+          },
+        },
         extensions = {
           ['ui-select'] = { require('telescope.themes').get_dropdown() },
         },
@@ -699,6 +718,7 @@ require('lazy').setup({
     'saghen/blink.cmp',
     event = 'VimEnter',
     version = '1.*',
+    build = 'cargo build --release',
     dependencies = {
       -- Snippet Engine
       {
@@ -806,7 +826,7 @@ require('lazy').setup({
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'tokyonight-storm'
     end,
   },
 
@@ -838,11 +858,71 @@ require('lazy').setup({
       -- set use_icons to true if you have a Nerd Font
       statusline.setup { use_icons = vim.g.have_nerd_font }
 
+      -- Cached Copilot status (avoid running command every redraw)
+      local _copilot_cache = { ts = 0, val = '' }
+
+      local function copilot_badge(kind)
+        local nerd = vim.g.have_nerd_font
+
+        local icons = nerd
+            and {
+              ready = '', -- nf-cod-copilot (AI ready)
+              noauth = '󰍁', -- not authenticated / needs login
+              off = '󰅛', -- disabled
+              err = '󰅚', -- error
+              busy = '󰄾', -- loading
+              other = '󰞋', -- unknown/info
+            }
+          or {
+            ready = 'AI',
+            noauth = 'AUTH',
+            off = 'OFF',
+            err = 'ERR',
+            busy = '...',
+            other = '?',
+          }
+
+        return (icons[kind] or icons.other) .. ' '
+      end
+
+      local function copilot_status()
+        if vim.fn.exists ':Copilot' == 0 then
+          return '' -- no plugin
+        end
+
+        local now = vim.uv.hrtime()
+
+        -- refresh at most every 2 seconds
+        if now - _copilot_cache.ts < 2e9 then return _copilot_cache.val end
+
+        local ok, out = pcall(vim.fn.execute, 'Copilot status')
+        _copilot_cache.ts = now
+
+        if not ok or type(out) ~= 'string' then
+          _copilot_cache.val = copilot_badge 'err'
+          return _copilot_cache.val
+        end
+
+        local low = out:lower()
+
+        if out:find 'Ready' then
+          _copilot_cache.val = copilot_badge 'ready'
+        elseif low:find 'not authenticated' or low:find 'auth' then
+          _copilot_cache.val = copilot_badge 'noauth'
+        elseif low:find 'disabled' then
+          _copilot_cache.val = copilot_badge 'off'
+        else
+          _copilot_cache.val = copilot_badge 'other'
+        end
+
+        return _copilot_cache.val
+      end
+
       -- You can configure sections in the statusline by overriding their
       -- default behavior. For example, here we set the section for
       -- cursor location to LINE:COLUMN
       ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_location = function() return '%2l:%-2v' end
+      statusline.section_location = function() return copilot_status() .. '%2l:%-2v' end
 
       -- ... and there is more!
       --  Check out: https://github.com/nvim-mini/mini.nvim
