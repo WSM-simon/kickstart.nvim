@@ -957,8 +957,9 @@ require('lazy').setup({
 -- vim: ts=2 sts=2 sw=2 et
 --
 -- vscode neovim ui modifier
-vim.api.nvim_exec(
-  [[
+if vim.g.vscode then
+  vim.api.nvim_exec(
+    [[
     " THEME CHANGER
     function! SetCursorLineNrColorInsert(mode)
         " Insert mode: blue
@@ -981,5 +982,6 @@ vim.api.nvim_exec(
         autocmd ModeChanged [vV\x16]*:* call VSCodeNotify('nvim-theme.normal')
     augroup END
 ]],
-  false
-)
+    false
+  )
+end
