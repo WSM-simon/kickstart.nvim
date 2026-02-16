@@ -858,9 +858,6 @@ require('lazy').setup({
       -- set use_icons to true if you have a Nerd Font
       statusline.setup { use_icons = vim.g.have_nerd_font }
 
-      -- Cached Copilot status (avoid running command every redraw)
-      local _copilot_cache = { ts = 0, val = '' }
-
       local function copilot_badge(kind)
         local nerd = vim.g.have_nerd_font
 
@@ -885,44 +882,11 @@ require('lazy').setup({
         return (icons[kind] or icons.other) .. ' '
       end
 
-      local function copilot_status()
-        if vim.fn.exists ':Copilot' == 0 then
-          return '' -- no plugin
-        end
-
-        local now = vim.uv.hrtime()
-
-        -- refresh at most every 2 seconds
-        if now - _copilot_cache.ts < 2e9 then return _copilot_cache.val end
-
-        local ok, out = pcall(vim.fn.execute, 'Copilot status')
-        _copilot_cache.ts = now
-
-        if not ok or type(out) ~= 'string' then
-          _copilot_cache.val = copilot_badge 'err'
-          return _copilot_cache.val
-        end
-
-        local low = out:lower()
-
-        if out:find 'Ready' then
-          _copilot_cache.val = copilot_badge 'ready'
-        elseif low:find 'not authenticated' or low:find 'auth' then
-          _copilot_cache.val = copilot_badge 'noauth'
-        elseif low:find 'disabled' then
-          _copilot_cache.val = copilot_badge 'off'
-        else
-          _copilot_cache.val = copilot_badge 'other'
-        end
-
-        return _copilot_cache.val
-      end
-
       -- You can configure sections in the statusline by overriding their
       -- default behavior. For example, here we set the section for
       -- cursor location to LINE:COLUMN
       ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_location = function() return copilot_status() .. '%2l:%-2v' end
+      statusline.section_location = function() return '%2l:%-2v' end
 
       -- ... and there is more!
       --  Check out: https://github.com/nvim-mini/mini.nvim
@@ -954,7 +918,7 @@ require('lazy').setup({
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
