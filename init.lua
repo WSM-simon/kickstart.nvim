@@ -495,6 +495,7 @@ require('lazy').setup({
   {
     -- Main LSP Configuration
     'neovim/nvim-lspconfig',
+    enabled = not vim.g.vscode,
     dependencies = {
       -- Automatically install LSPs and related tools to stdpath for Neovim
       -- Mason must be loaded before its dependents so we need to set it up here.
@@ -677,6 +678,7 @@ require('lazy').setup({
 
   { -- Autoformat
     'stevearc/conform.nvim',
+    enabled = not vim.g.vscode,
     event = { 'BufWritePre' },
     cmd = { 'ConformInfo' },
     keys = {
@@ -716,6 +718,7 @@ require('lazy').setup({
 
   { -- Autocompletion
     'saghen/blink.cmp',
+    enabled = not vim.g.vscode,
     event = 'VimEnter',
     version = '1.*',
     build = 'cargo build --release',
@@ -895,6 +898,7 @@ require('lazy').setup({
 
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
+    enabled = not vim.g.vscode,
     config = function()
       local filetypes = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
       require('nvim-treesitter').install(filetypes)
@@ -956,32 +960,3 @@ require('lazy').setup({
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 --
--- vscode neovim ui modifier
-if vim.g.vscode then
-  vim.api.nvim_exec(
-    [[
-    " THEME CHANGER
-    function! SetCursorLineNrColorInsert(mode)
-        " Insert mode: blue
-        if a:mode == "i"
-            call VSCodeNotify('nvim-theme.insert')
-
-        " Replace mode: red
-        elseif a:mode == "r"
-            call VSCodeNotify('nvim-theme.replace')
-        endif
-    endfunction
-
-    augroup CursorLineNrColorSwap
-        autocmd!
-        autocmd ModeChanged *:[vV\x16]* call VSCodeNotify('nvim-theme.visual')
-        autocmd ModeChanged *:[R]* call VSCodeNotify('nvim-theme.replace')
-        autocmd InsertEnter * call SetCursorLineNrColorInsert(v:insertmode)
-        autocmd InsertLeave * call VSCodeNotify('nvim-theme.normal')
-        autocmd CursorHold * call VSCodeNotify('nvim-theme.normal')
-        autocmd ModeChanged [vV\x16]*:* call VSCodeNotify('nvim-theme.normal')
-    augroup END
-]],
-    false
-  )
-end
